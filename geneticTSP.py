@@ -47,6 +47,12 @@ def geneticTSP_createChild(parents, parentsFitness, distances, mutationRateInver
 
 def geneticTSP_mutate(a, mutationRateInverse, varianceLengthDivisor):
 	if (0 == randrange(mutationRateInverse)):
+		"""
+		r = randrange(len(a))
+		a = rotate(a,r)
+		perm(a,randrange(len(a)))
+		a = rotate(a,-r)
+		"""
 		createCandidatePermutation(a, varianceLengthDivisor)
 		
 def geneticTSP_createNewGeneration(parents, parentsFitness, n, bestGenome, bestFitness, distances, mutationRateInverse, varianceLengthDivisor):
@@ -74,8 +80,16 @@ def geneticTSP_mergeGenerations(parents,parentsFitness,children,childrensFitness
 			survivorsFitness.append(parentsFitness[i])
 	return survivors, survivorsFitness
 	
+def geneticTSP_updateCensus(census, parentsFitness, dt):
+	census[0].append(min(parentsFitness))
+	census[1].append(max(parentsFitness))
+	census[2].append(avg(parentsFitness))
+	census[3].append(stdDev(parentsFitness))
+	census[4].append(dt)
+	return census
 
-def geneticTSP(names, distances, n, timeAllowed, verbose, varianceLengthDivisor, mutationRateInverse, populationSize):
+
+def geneticTSP(names, distances, n, timeAllowed, verbose, varianceLengthDivisor, mutationRateInverse, populationSize, figureOffset):
 	t = time.time()
 	a = range(0,n)
 	bestGenome = a[:]
@@ -83,12 +97,42 @@ def geneticTSP(names, distances, n, timeAllowed, verbose, varianceLengthDivisor,
 	parents, parentsFitness, bestGenome, bestFitness = geneticTSP_randomInitialization(distances, n, populationSize, a, bestGenome, bestFitness)
 	generations = 0
 	dt = 0.0 
+	bestFitnesses = [math.log(bestFitness)]
+	times = [dt]
+	census = [[],[],[],[],[]]
+	census = geneticTSP_updateCensus(census, parentsFitness, dt)
 	while dt < timeAllowed:
 		generations += 1
 		children, childrensFitness, bestGenome, bestFitness = geneticTSP_createNewGeneration(parents, parentsFitness, n, bestGenome, bestFitness, distances, mutationRateInverse, varianceLengthDivisor)
-		parents, parentsFitness    = geneticTSP_mergeGenerations   (parents, parentsFitness, children, childrensFitness)
+		parents, parentsFitness = geneticTSP_mergeGenerations(parents, parentsFitness, children, childrensFitness)
 		dt = time.time() - t
+		census = geneticTSP_updateCensus(census, parentsFitness, dt)
+		if math.log(bestFitness) < bestFitnesses[len(bestFitnesses)-1]:
+			bestFitnesses.append(math.log(bestFitness))
+			times.append(dt)
 	bestGenome = standardizePermutation(bestGenome)
+	census = geneticTSP_updateCensus(census, parentsFitness, dt)
+	bestFitnesses.append(math.log(bestFitness))
+	times.append(dt)
+	plt.figure(3+figureOffset)
+	plt.plot(times,bestFitnesses)
+	
+	best  = [math.log(x) for x in census[0]]
+	worst = [math.log(x) for x in census[1]]
+	avg   = [math.log(x) for x in census[2]]
+	# dont need log of sigma
+	plusOneSigma  = [math.log(census[2][i]+census[3][i]) for i in range(len(census[0]))]
+	minusOneSigma = [math.log(census[2][i]-census[3][i]) for i in range(len(census[0]))]
+	plt.figure(50+figureOffset)
+	p = plt.plot(census[4],avg)
+	plt.plot(census[4],plusOneSigma,  '-.', color=p[0].get_color(), alpha=0.6)
+	plt.plot(census[4],minusOneSigma, '-.', color=p[0].get_color(), alpha=0.6)
+	plt.plot(census[4],best, ':',  color=p[0].get_color(), alpha=0.3)
+	plt.plot(census[4],worst,':',  color=p[0].get_color(), alpha=0.3)
+	
+#	plt.plot(census[4],census[1])
+#	plt.plot(census[4],census[0])
+	
 	if verbose:
 		print "By genetic search of",generations,"generations"
 		print "of",populationSize,"inidividuals the path"

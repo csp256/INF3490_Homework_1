@@ -2,7 +2,19 @@ import csv
 import math
 import time
 import random
+import matplotlib.pyplot as plt
 from random import randrange
+
+def avg(l):
+	return sum(l)/len(l)
+
+def stdDev(l):
+	mean = avg(l)
+	s = 0
+	for i in l: # calculates standard deviation of path length
+		s += (i - mean)**2
+	s /= 1.0*len(l)
+	return math.sqrt(s)
 
 def rotate(l,n):
     return l[n:] + l[:n]
@@ -68,6 +80,8 @@ def exhaustiveTSP(names, distances, i, timeLimit, verbose):
 	dt = 0.0
 	factorial = math.factorial(i)
 	x = 0
+	bestDistances = [math.log(bestDistance)]
+	times = [dt]
 	while x < factorial:
 		x += 1
 		b = perm(a, x)
@@ -76,8 +90,12 @@ def exhaustiveTSP(names, distances, i, timeLimit, verbose):
 			bestDistance = currDistance
 			bestPermutation = b[:]
 		dt = (time.time() - t)
-		if (timeLimit <= dt):
+		bestDistances.append(math.log(bestDistance))
+		times.append(dt)
+		if timeLimit <= dt:# and False: # "and False" turns off premature exiting for testing
 			bestPermutation = standardizePermutation(bestPermutation)
+			plt.figure(1)
+			plt.plot(times,bestDistances)
 			if verbose:
 				print "Exhaustive search exceeded the time limit of",timeLimit,"seconds."
 				print "The best permutation (so far) is"
@@ -89,6 +107,8 @@ def exhaustiveTSP(names, distances, i, timeLimit, verbose):
 				print " "
 			return bestPermutation, bestDistance, x/(1.0*math.factorial(i))
 	bestPermutation = standardizePermutation(bestPermutation)
+	plt.figure(1)
+	plt.plot(times,bestDistances)
 	if verbose:
 		print "By exhaustive search the permutation "
 		print bestPermutation
@@ -108,15 +128,23 @@ def hillClimbTSP(names, distances, i, timeLimit, verbose, varianceLengthDivisor)
 	bestDistance = routeLength(a,distances)
 	dt = 0.0
 	iterations = 0
+	bestDistances = [math.log(bestDistance)]
+	times = [dt]
 	while dt < timeLimit:
 		iterations += 1
 		createCandidatePermutation(a, varianceLengthDivisor)
 		currDistance = routeLength(a, distances)
+		dt = (time.time() - t)
 		if currDistance < bestDistance:
 			bestPermutation = a[:]
 			bestDistance = currDistance
-		dt = (time.time() - t)
+			bestDistances.append(math.log(bestDistance))
+			times.append(dt)
 	bestPermutation = standardizePermutation(bestPermutation)
+	bestDistances.append(math.log(bestDistance))
+	times.append(dt)
+	plt.figure(2)
+	plt.plot(times, bestDistances)
 	if verbose:
 		print "By hillclimbing the permutation "
 		print bestPermutation
